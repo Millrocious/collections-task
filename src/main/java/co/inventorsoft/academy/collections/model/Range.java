@@ -1,7 +1,12 @@
 package co.inventorsoft.academy.collections.model;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 public class Range<T extends Comparable<T>> implements Set<T> {
     private final T start;
@@ -14,31 +19,55 @@ public class Range<T extends Comparable<T>> implements Set<T> {
         this.stepFunction = stepFunction;
     }
 
-    public static <T extends Comparable<T>> Range<T> of(T start, T end) {
-        return new Range<>(start, end, null);
+    public static Range<Integer> of(Integer start, Integer end) {
+        return of(start, end, (Integer current) -> current + 1);
+    }
+
+    public static Range<Float> of(Float start, Float end) {
+        return of(start, end, (Float current) -> current + 0.1f);
+    }
+
+    public static Range<Double> of(Double start, Double end) {
+        return of(start, end, (Double current) -> current + 0.1);
     }
 
     public static <T extends Comparable<T>> Range<T> of(T start, T end, Function<T, T> stepFunction) {
+        if (start == null || end == null || stepFunction == null) {
+            throw new IllegalArgumentException("start, end, and stepFunction must not be null");
+        }
         return new Range<>(start, end, stepFunction);
     }
+
 
     public int size() {
         if (start.compareTo(end) == 0) {
             return 0;
         }
 
-        int size = 0;
+        int size = 1;
         T current = start;
-        while (current.compareTo(end) <= 0) {
+
+        while (current.compareTo(end) < 0) {
+            current = getNextElement(current);
             size++;
-            current = stepFunction != null ? stepFunction.apply(current) : increment(current);
         }
+
         return size;
+    }
+
+    public Iterator<T> iterator() {
+        return Stream
+                .iterate(start, elem -> elem.compareTo(end) <= 0, this::getNextElement)
+                .iterator();
+    }
+
+    private T getNextElement(T current) {
+        return stepFunction.apply(current);
     }
 
 
     public boolean isEmpty() {
-        return size() == 0;
+        return start.compareTo(end) == 0;
     }
 
     public boolean contains(Object o) {
@@ -49,22 +78,8 @@ public class Range<T extends Comparable<T>> implements Set<T> {
         return false;
     }
 
-    public Iterator<T> iterator() {
-        return new Iterator<T>() {
-            private T current = start;
-
-            @Override
-            public boolean hasNext() {
-                return current.compareTo(end) <= 0;
-            }
-
-            @Override
-            public T next() {
-                T result = current;
-                current = stepFunction != null ? stepFunction.apply(current) : increment(current);
-                return result;
-            }
-        };
+    public boolean containsAll(Collection<?> c) {
+        return c.stream().allMatch(this::contains);
     }
 
     public Object[] toArray() {
@@ -78,22 +93,12 @@ public class Range<T extends Comparable<T>> implements Set<T> {
         return list.toArray(a);
     }
 
-
     public boolean add(T t) {
         throw new UnsupportedOperationException("Adding elements to the Range is not supported.");
     }
 
     public boolean remove(Object o) {
         throw new UnsupportedOperationException("Removing elements from the Range is not supported.");
-    }
-
-    public boolean containsAll(Collection<?> c) {
-        for (Object element : c) {
-            if (!contains(element)) {
-                return false;
-            }
-        }
-        return true;
     }
 
     public boolean addAll(Collection<? extends T> c) {
@@ -112,15 +117,4 @@ public class Range<T extends Comparable<T>> implements Set<T> {
         throw new UnsupportedOperationException("Clearing the Range is not supported.");
     }
 
-    private T increment(T value) {
-        if (value instanceof Integer) {
-            return (T) Integer.valueOf(((Integer) value) + 1);
-        } else if (value instanceof Float) {
-            return (T) Float.valueOf(((Float) value) + 0.1f);
-        } else if (value instanceof Double) {
-            return (T) Double.valueOf(((Double) value) + 0.1);
-        } else {
-            throw new UnsupportedOperationException("Unsupported type for increment");
-        }
-    }
 }
